@@ -329,6 +329,8 @@ main(int argc,char **argv)
   SSL_CTX *ctx;
   int pi2c[2], pi4c[2];
   
+  ctx = NULL;
+
   if (!stralloc_copys(&certfile, CERTFILE) || !stralloc_0(&certfile) )
     strerr_die2x(111,FATAL,"out of memory");
   while ((opt = getopt(argc,argv,"dDvqQhHrRsS1UXx:t:u:g:l:b:B:c:n:pPoO")) != opteof)
@@ -409,15 +411,17 @@ main(int argc,char **argv)
   byte_copy(localip,4,addresses.s);
 
 #ifdef WITH_SSL
-  /* setup SSL context (load key and cert into ctx) */
-  SSL_library_init();
-  ctx=SSL_CTX_new(SSLv23_server_method());
-  if (!ctx) strerr_die2x(111,FATAL,"unable to create SSL context");
+  if (flagssl == 1) {
+    /* setup SSL context (load key and cert into ctx) */
+    SSL_library_init();
+    ctx=SSL_CTX_new(SSLv23_server_method());
+    if (!ctx) strerr_die2x(111,FATAL,"unable to create SSL context");
 
-  if(SSL_CTX_use_RSAPrivateKey_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
-    strerr_die2x(111,FATAL,"unable to load RSA private key");
-  if(SSL_CTX_use_certificate_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
-    strerr_die2x(111,FATAL,"unable to load certificate");
+    if(SSL_CTX_use_RSAPrivateKey_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
+      strerr_die2x(111,FATAL,"unable to load RSA private key");
+    if(SSL_CTX_use_certificate_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
+      strerr_die2x(111,FATAL,"unable to load certificate");
+  }
 #endif
   
   s = socket_tcp();
