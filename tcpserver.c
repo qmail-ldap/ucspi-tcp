@@ -42,7 +42,7 @@ int flagssl = 0;
 struct stralloc certfile = {0};
 #define CERTFILE "./cert.pem"
 
-void translate(SSL* ssl, int clearout, int clearin, unsigned int timeout);
+void translate(SSL*, int, int, unsigned int);
 #endif
 
 static stralloc tcpremoteinfo;
