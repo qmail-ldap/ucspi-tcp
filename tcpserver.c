@@ -387,7 +387,7 @@ ip_limit_check(char ip[4], int d)
   for (l = 0, c= 0; l < limit; l++)
     if (!byte_diff(conns[l].remoteip, sizeof(ip), ip))
       c++;
-  if (c + d > limit_ip)
+  if (limit_ip != 0 && c + d > limit_ip)
     return 1;
 
   return 0;
