@@ -22,6 +22,11 @@ void found(char *data,unsigned int datalen)
 	buffer_puts(buffer_1,data + 1);
 	buffer_puts(buffer_1,"\n");
 	break;
+      case '-':
+	buffer_puts(buffer_1,"unset environment variable ");
+	buffer_puts(buffer_1,data + 1);
+	buffer_puts(buffer_1,"\n");
+	break;
     }
     ++next0;
     data += next0; datalen -= next0;

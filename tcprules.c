@@ -94,6 +94,7 @@ main(int argc,char **argv)
   int len;
   int fd;
   int i;
+  int e;
   char ch;
 
   fn = argv[1];
@@ -144,8 +145,16 @@ main(int argc,char **argv)
     while (len)
       switch(*x) {
         case ',':
+	  e = byte_chr(x + 1,len - 1,',');
           i = byte_chr(x,len,'=');
-          if (i == len) die_bad();
+          if (i > e) {
+	    if (e < 2 || x[1] != '!') die_bad();
+	    if (!stralloc_catb(&data,"-",1)) nomem();
+	    if (!stralloc_catb(&data,x + 2,e - 1)) nomem();
+	    if (!stralloc_0(&data)) nomem();
+	    x += e + 1; len -= e + 1;
+	    break;
+	  }
           if (!stralloc_catb(&data,"+",1)) nomem();
           if (!stralloc_catb(&data,x + 1,i)) nomem();
           x += i + 1; len -= i + 1;

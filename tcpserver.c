@@ -135,6 +135,9 @@ void found(char *data,unsigned int datalen)
 	  env(data + 1,data + 1 + split + 1);
 	}
 	break;
+      case '-':
+	env(data + 1, (char *)0);
+	break;
     }
     ++next0;
     data += next0; datalen -= next0;
