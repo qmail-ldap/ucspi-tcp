@@ -254,6 +254,8 @@ void usage(void)
 tcpserver: usage: tcpserver \
 [ -1UXpPhHrRoOdDqQv ] \
 [ -c limit ] \
+[ -C [address[/len]:]limit ] \
+[ -e name=var ] \
 [ -x rules.cdb ] \
 [ -B banner ] \
 [ -g gid ] \
@@ -267,6 +269,8 @@ host port program",0);
 tcpserver: usage: tcpserver \
 [ -1UXpPhHrRoOdDqQsSv ] \
 [ -c limit ] \
+[ -C [address[/len]:]limit ] \
+[ -e name=var ] \
 [ -x rules.cdb ] \
 [ -B banner ] \
 [ -g gid ] \
@@ -301,12 +305,106 @@ void sigterm()
   _exit(0);
 }
 
+struct conn {
+  int pid;
+  char remoteip[4];
+} *conns;
+
+struct ip_limelt {
+  char ip[4];
+  char mask[4];
+  unsigned long limit;
+  unsigned long count;
+};
+
+#include "gen_alloc.h"
+#include "gen_allocdefs.h"
+GEN_ALLOC_typedef(ip_limit,struct ip_limelt,l,len,a)
+GEN_ALLOC_readyplus(ip_limit, struct ip_limelt,l,len,a,i,n,x,10,
+  ip_limit_rp)
+
+ip_limit ipl = {0};
+unsigned long limit_ip = 0;
+
+void
+ip_limit_add(char *str)
+{
+  unsigned int n, len;
+  unsigned long ul = 0;
+  struct ip_limelt lim;
+
+  byte_zero(&lim, sizeof(lim));
+  n = str_chr(str, ':');
+  if (str[n] == ':') {
+    str[n] = 0;
+    scan_ulong(str + n + 1, &ul);
+    lim.limit = ul;
+    /* parse ip */
+    ul = 32;
+    n = str_chr(str, '/');
+    if (str[n] == '/')
+      scan_ulong(str + n + 1, &ul);
+    if (ul > 32)
+      strerr_die2x(111,FATAL,"ip prefix len > 32");
+    if (ip4_scan(str, lim.ip) == 0)
+      strerr_die2x(111,FATAL,"bad ip address");
+    for (n = 0; n < 4; n++)
+      if (ul > 8) {
+	lim.mask[n] = 0xff;
+	ul -= 8;
+      } else {
+	lim.mask[n] = 0xff << (8 - ul);
+	ul = 0;
+      }
+    if (!ip_limit_rp(&ipl,1))
+      strerr_die2x(111,FATAL,"out of memory");
+    ipl.l[ipl.len++] = lim;
+  } else {
+    scan_ulong(str, &ul);
+    limit_ip = ul;
+  }
+}
+
+int
+ip_limit_check(char ip[4], int d)
+{
+  unsigned long c;
+  unsigned int l;
+  int i;
+
+  for (l = 0; l < ipl.len; l++)
+    if ((ip[0] & ipl.l[l].mask[0]) == (ipl.l[l].ip[0] & ipl.l[l].mask[0]) &&
+        (ip[1] & ipl.l[l].mask[1]) == (ipl.l[l].ip[1] & ipl.l[l].mask[1]) &&
+        (ip[2] & ipl.l[l].mask[2]) == (ipl.l[l].ip[2] & ipl.l[l].mask[2]) &&
+        (ip[3] & ipl.l[l].mask[3]) == (ipl.l[l].ip[3] & ipl.l[l].mask[3])) {
+      if (ipl.l[l].count + d > ipl.l[l].limit)
+	return 1;
+      ipl.l[l].count += d;
+      return 0;
+    }
+
+  /* global per ip limit */
+  for (l = 0, c= 0; l < limit; l++)
+    if (!byte_diff(conns[l].remoteip, sizeof(ip), ip))
+      c++;
+  if (c + d > limit_ip)
+    return 1;
+
+  return 0;
+}
+
 void sigchld()
 {
   int wstat;
   int pid;
- 
+  unsigned int i;
+
   while ((pid = wait_nohang(&wstat)) > 0) {
+    for (i = 0; i < limit; i++)
+      if (conns[i].pid == pid) {
+	ip_limit_check(conns[i].remoteip, -1);
+	byte_zero(&conns[i], sizeof(struct conn));
+      }
     if (verbosity >= 2) {
       strnum[fmt_ulong(strnum,pid)] = 0;
       strnum2[fmt_ulong(strnum2,wstat)] = 0;
@@ -323,26 +421,31 @@ main(int argc,char **argv)
   int opt;
   struct servent *se;
   char *x;
+  char *iplimenv;
+  int flagiplim;
   unsigned long u;
   int s;
   int t;
+  unsigned int i;
+  int pid;
 #ifdef WITH_SSL
   BIO *sbio;
   SSL *ssl;
   SSL_CTX *ctx;
   int pi2c[2], pi4c[2];
-  
+
   ctx = NULL;
 
   if (!stralloc_copys(&certfile, CERTFILE) || !stralloc_0(&certfile) )
     strerr_die2x(111,FATAL,"out of memory");
-  while ((opt = getopt(argc,argv,"dDvqQhHrRsS1UXx:t:u:g:l:b:B:c:n:pPoO")) != opteof)
+  while ((opt = getopt(argc,argv,"dDvqQhHrRsS1UXx:t:u:g:l:b:B:c:C:e:n:pPoO")) != opteof)
 #else
-  while ((opt = getopt(argc,argv,"dDvqQhHrR1UXx:t:u:g:l:b:B:c:pPoO")) != opteof)
+  while ((opt = getopt(argc,argv,"dDvqQhHrR1UXx:t:u:g:l:b:B:c:C:e:pPoO")) != opteof)
 #endif
     switch(opt) {
       case 'b': scan_ulong(optarg,&backlog); break;
       case 'c': scan_ulong(optarg,&limit); break;
+      case 'C': ip_limit_add(optarg); break;
       case 'X': flagallownorules = 1; break;
       case 'x': fnrules = optarg; break;
       case 'B': banner = optarg; break;
@@ -366,6 +469,10 @@ main(int argc,char **argv)
       case 'g': scan_ulong(optarg,&gid); break;
       case '1': flag1 = 1; break;
       case 'l': localhost = optarg; break;
+      case 'e': iplimenv = optarg;
+		if (iplimenv[str_chr(iplimenv, '=')] != '=')
+		  strerr_die2x(100,FATAL, "no '=' in ip limit env-var");
+		break;
 #ifdef WITH_SSL
       case 's': flagssl = 1; break;
       case 'S': flagssl = 0; break;
@@ -381,6 +488,15 @@ main(int argc,char **argv)
 
   if (!verbosity)
     buffer_2->fd = -1;
+
+  if (limit == 0)
+    strerr_die2x(100,FATAL,"limit may not be set to 0");
+  if (limit > 65000)
+    strerr_die2x(100,FATAL,"limit way to high");
+  conns = (struct conn *)alloc(limit * sizeof(struct conn));
+  if (!conns)
+    strerr_die2x(111,FATAL,"out of memory");
+  byte_zero(conns, limit * sizeof(struct conn));
  
   hostname = *argv++;
   if (!hostname) usage();
@@ -419,6 +535,11 @@ main(int argc,char **argv)
     SSL_library_init();
     ctx=SSL_CTX_new(SSLv23_server_method());
     if (!ctx) strerr_die2x(111,FATAL,"unable to create SSL context");
+
+    /* set prefered ciphers */
+    if (env_get("SSL_CIPHER"))
+      if (SSL_CTX_set_cipher_list(ctx, env_get("SSL_CIPHER")) == 0)
+	strerr_die2x(111,FATAL,"unable to set cipher list");
 
     if(SSL_CTX_use_RSAPrivateKey_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
       strerr_die2x(111,FATAL,"unable to load RSA private key");
@@ -465,9 +586,31 @@ main(int argc,char **argv)
 
     if (t == -1) continue;
     ++numchildren; printstatus();
+
+    /* per ip handling */
+    flagiplim = 0;
+    if (ip_limit_check(remoteip, 1)) {
+      remoteipstr[ip4_fmt(remoteipstr,remoteip)] = 0;
+      if (iplimenv) {
+        strerr_warn4(DROP,"too many conections from ",remoteipstr,
+	    " only flagged",0);
+	flagiplim = 1;
+      } else {
+        strerr_warn3(DROP,"too many conections from ",remoteipstr,0);
+        --numchildren; printstatus();
+        close(t);
+        continue;
+      }
+    }
  
-    switch(fork()) {
+    switch(pid = fork()) {
       case 0:
+	if (flagiplim) {
+          int split;
+      	  split = str_chr(iplimenv,'=');
+	  iplimenv[split] = 0;
+	  env(iplimenv,iplimenv + split + 1);
+	}
         close(s);
         doit(t);
         if ((fd_move(0,t) == -1) || (fd_copy(1,0) == -1))
@@ -514,6 +657,14 @@ main(int argc,char **argv)
       case -1:
         strerr_warn2(DROP,"unable to fork: ",&strerr_sys);
         --numchildren; printstatus();
+	break;
+      default:
+	for (i = 0; i < limit; i++)
+	  if (conns[i].pid == 0) {
+	    conns[i].pid = pid;
+	    byte_copy(conns[i].remoteip, sizeof(remoteip), remoteip);
+	    break;
+	  }
     }
     close(t);
   }

@@ -4,10 +4,16 @@ tcpserver \- accept incoming TCP connections
 .SH SYNOPSIS
 .B tcpserver
 [
-.B \-1pPhHrRoOdDqQv
+.B \-1UXpPhHrRoOdDqQsSv
 ]
 [
 .B \-c\fIlimit
+]
+[
+.B \-C\fI[address[/len]:]limit
+]
+[
+.B \-e\fIname=[var]
 ]
 [
 .B \-x\fIrules.cdb
@@ -29,6 +35,9 @@ tcpserver \- accept incoming TCP connections
 ]
 [
 .B \-t\fItimeout
+]
+[
+.B \-n\fIcertfile
 ]
 .I host
 .I port
@@ -87,6 +96,34 @@ until one copy finishes.
 must be a positive integer.
 Default: 40.
 .TP
+.B \-C\fI[address[/len]:]limit
+Do not handle more than
+.I limit
+connections from the specified address or prefix.
+If there is no address specified a generic per IP
+.I limit
+is enforced.
+It is possible to specify multiple
+.IR limits .
+These limits are evaluated in sequential order, from first to last.
+The first matching
+.I limit
+decides what action is taken.
+The only exception is the generic per IP
+.I limit
+which is always evaluated last.
+.TP
+.B \-e\fIname=[var]
+If a per address limit is hit instead of dropping the connection set the
+environment variable
+.I name
+with
+.I var
+as optional data.
+This may be handy with the qmail-ldap patched qmail-smtpd where setting
+the environment 421GREETING will result in a restricted SMTP session always
+returning a temporary error.
+.TP
 .B \-x\fIrules.cdb
 Follow the rules compiled into
 .I rules.cdb
@@ -136,6 +173,16 @@ after preparing to receive connections.
 .I uid
 must be a positive integer.
 .TP
+.B \-U
+Same as
+.B \-g\fI$GID
+.BR \-u\fI$UID .
+Typically
+.I $GID
+and
+.I $UID
+are set by envuidgid.
+.TP
 .B \-1
 After preparing to receive connections,
 print the local port number to standard output.
@@ -182,9 +229,28 @@ Do not print any messages.
 (Default.)
 Print error messages.
 .TP
+.B \-s
+Enable SSL/TLS mode. This modus needs a SSL enabled build and a certificat.
+.TP
+.B \-S
+(Default.)
+Don't enable SSL/TLS mode.
+.TP
+.B \-n\fIcertfile
+Instead of the default ./cert.pem certificate us the specified
+.IR certfile .
+.TP
 .B \-v
 Verbose.
 Print all available messages.
+.TP
+.B \-X
+With
+.BR -x\fIcdb ,
+allow connections even if
+.I cdb
+does not exist.
+Normally the connection gets dropped.
 .SH "DATA-GATHERING OPTIONS"
 .TP
 .B \-p
@@ -234,6 +300,13 @@ connection attempt
 after
 .I timeout
 seconds. Default: 26.
+.SH ENVIRONMENT
+.TP
+.B SSL_CIPHER
+Specifies the ciphers that should be used in SSL/TLS mode.
+See
+.I openssl(1)
+for more information.
 .SH "SEE ALSO"
 argv0(1),
 fixcr(1),
@@ -241,4 +314,5 @@ recordio(1),
 tcpclient(1),
 tcprules(1),
 listen(2),
-tcp-environ(5)
+tcp-environ(5),
+openssl(1)
