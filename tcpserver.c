@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <netdb.h>
+#include <openssl/ssl.h>
 #include "uint16.h"
 #include "str.h"
 #include "byte.h"
@@ -36,6 +37,13 @@ int flagremoteinfo = 1;
 int flagremotehost = 1;
 int flagparanoid = 0;
 unsigned long timeout = 26;
+#ifdef WITH_SSL
+int flagssl = 0;
+struct stralloc certfile = {0};
+#define CERTFILE "./cert.pem"
+
+void translate(SSL* ssl, int clearout, int clearin, unsigned int timeout);
+#endif
 
 static stralloc tcpremoteinfo;
 
@@ -238,6 +246,7 @@ void doit(int t)
 
 void usage(void)
 {
+#ifndef WITH_SSL
   strerr_warn1("\
 tcpserver: usage: tcpserver \
 [ -1UXpPhHrRoOdDqQv ] \
@@ -250,6 +259,21 @@ tcpserver: usage: tcpserver \
 [ -l localname ] \
 [ -t timeout ] \
 host port program",0);
+#else
+  strerr_warn1("\
+tcpserver: usage: tcpserver \
+[ -1UXpPhHrRoOdDqQsSv ] \
+[ -c limit ] \
+[ -x rules.cdb ] \
+[ -B banner ] \
+[ -g gid ] \
+[ -u uid ] \
+[ -b backlog ] \
+[ -l localname ] \
+[ -t timeout ] \
+[ -n certfile ] \
+host port program",0);
+#endif
   _exit(100);
 }
 
@@ -299,8 +323,18 @@ main(int argc,char **argv)
   unsigned long u;
   int s;
   int t;
- 
+#ifdef WITH_SSL
+  BIO *sbio;
+  SSL *ssl;
+  SSL_CTX *ctx;
+  int pi2c[2], pi4c[2];
+  
+  if (!stralloc_copys(&certfile, CERTFILE) || !stralloc_0(&certfile) )
+    strerr_die2x(111,FATAL,"out of memory");
+  while ((opt = getopt(argc,argv,"dDvqQhHrRsS1UXx:t:u:g:l:b:B:c:n:pPoO")) != opteof)
+#else
   while ((opt = getopt(argc,argv,"dDvqQhHrR1UXx:t:u:g:l:b:B:c:pPoO")) != opteof)
+#endif
     switch(opt) {
       case 'b': scan_ulong(optarg,&backlog); break;
       case 'c': scan_ulong(optarg,&limit); break;
@@ -327,6 +361,14 @@ main(int argc,char **argv)
       case 'g': scan_ulong(optarg,&gid); break;
       case '1': flag1 = 1; break;
       case 'l': localhost = optarg; break;
+#ifdef WITH_SSL
+      case 's': flagssl = 1; break;
+      case 'S': flagssl = 0; break;
+      case 'n': if (!stralloc_copys(&certfile, optarg) ||
+		    !stralloc_0(&certfile) )
+		  strerr_die2x(111,FATAL,"out of memory");
+		break;
+#endif
       default: usage();
     }
   argc -= optind;
@@ -366,6 +408,18 @@ main(int argc,char **argv)
     strerr_die3x(111,FATAL,"no IP address for ",hostname);
   byte_copy(localip,4,addresses.s);
 
+#ifdef WITH_SSL
+  /* setup SSL context (load key and cert into ctx) */
+  SSL_library_init();
+  ctx=SSL_CTX_new(SSLv23_server_method());
+  if (!ctx) strerr_die2x(111,FATAL,"unable to create SSL context");
+
+  if(SSL_CTX_use_RSAPrivateKey_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
+    strerr_die2x(111,FATAL,"unable to load RSA private key");
+  if(SSL_CTX_use_certificate_file(ctx, certfile.s, SSL_FILETYPE_PEM) != 1)
+    strerr_die2x(111,FATAL,"unable to load certificate");
+#endif
+  
   s = socket_tcp();
   if (s == -1)
     strerr_die2sys(111,FATAL,"unable to create socket: ");
@@ -415,6 +469,39 @@ main(int argc,char **argv)
         sig_unblock(sig_child);
         sig_uncatch(sig_term);
         sig_uncatch(sig_pipe);
+#ifdef WITH_SSL
+	if (flagssl == 1) {
+	  if (pipe(pi2c) != 0)
+	    strerr_die2sys(111,DROP,"unable to create pipe: ");
+	  if (pipe(pi4c) != 0)
+	    strerr_die2sys(111,DROP,"unable to create pipe: ");
+	  switch(fork()) {
+	    case 0:
+	      close(0); close(1);
+	      close(pi2c[1]);
+	      close(pi4c[0]);
+	      if ((fd_move(0,pi2c[0]) == -1) || (fd_move(1,pi4c[1]) == -1))
+		strerr_die2sys(111,DROP,"unable to set up descriptors: ");
+	      /* signals are allready set in the parent */
+	      pathexec(argv);
+	      strerr_die4sys(111,DROP,"unable to run ",*argv,": ");
+	    case -1:
+	      strerr_die2sys(111,DROP,"unable to fork: ");
+	    default:
+	      ssl = SSL_new(ctx);
+	      if (!ssl)
+		strerr_die2x(111,DROP,"unable to set up SSL session");
+	      sbio = BIO_new_socket(0,BIO_NOCLOSE);
+	      if (!sbio)
+		strerr_die2x(111,DROP,"unable to set up BIO socket");
+	      SSL_set_bio(ssl,sbio,sbio);
+	      close(pi2c[0]);
+	      close(pi4c[1]);
+	      translate(ssl, pi2c[1], pi4c[0], 3600);
+	      _exit(0);
+	  }
+	}
+#endif
         pathexec(argv);
 	strerr_die4sys(111,DROP,"unable to run ",*argv,": ");
       case -1:
@@ -424,3 +511,102 @@ main(int argc,char **argv)
     close(t);
   }
 }
+
+#ifdef WITH_SSL
+static int allwrite(int fd, char *buf, int len)
+{
+  int w;
+
+  while (len) {
+    w = write(fd,buf,len);
+    if (w == -1) {
+      if (errno == error_intr) continue;
+      return -1; /* note that some data may have been written */
+    }
+    if (w == 0) ; /* luser's fault */
+    buf += w;
+    len -= w;
+  }
+  return 0;
+}
+
+static int allwritessl(SSL* ssl, char *buf, int len)
+{
+  int w;
+
+  while (len) {
+    w = SSL_write(ssl,buf,len);
+    if (w == -1) {
+      if (errno == error_intr) continue;
+      return -1; /* note that some data may have been written */
+    }
+    if (w == 0) ; /* luser's fault */
+    buf += w;
+    len -= w;
+  }
+  return 0;
+}
+
+char tbuf[2048];
+
+void translate(SSL* ssl, int clearout, int clearin, unsigned int iotimeout)
+{
+  struct taia now;
+  struct taia deadline;
+  iopause_fd iop[2];
+  int flagexitasap;
+  int iopl;
+  int sslout, sslin;
+  int n, r;
+
+  sslin = SSL_get_fd(ssl);
+  sslout = SSL_get_fd(ssl);
+  if (sslin == -1 || sslout == -1)
+    strerr_die2x(111,DROP,"unable to set up SSL connection");
+  
+  flagexitasap = 0;
+
+  if (SSL_accept(ssl)<=0)
+    strerr_die2x(111,DROP,"unable to accept SSL connection");
+
+  while (!flagexitasap) {
+    taia_now(&now);
+    taia_uint(&deadline,iotimeout);
+    taia_add(&deadline,&now,&deadline);
+
+    /* fill iopause struct */
+    iopl = 2;
+    iop[0].fd = sslin;
+    iop[0].events = IOPAUSE_READ;
+    iop[1].fd = clearin;
+    iop[1].events = IOPAUSE_READ;
+
+    /* do iopause read */
+    iopause(iop,iopl,&deadline,&now);
+    if (iop[0].revents) {
+      /* data on sslin */
+      n = SSL_read(ssl, tbuf, sizeof(tbuf));
+      if ( n < 0 )
+	strerr_die2sys(111,DROP,"unable to read form network: ");
+      if ( n == 0 )
+	flagexitasap = 1;
+      r = allwrite(clearout, tbuf, n);
+      if ( r < 0 )
+	strerr_die2sys(111,DROP,"unable to write to client: ");
+    }
+    if (iop[1].revents) {
+      /* data on clearin */
+      n = read(clearin, tbuf, sizeof(tbuf));
+      if ( n < 0 )
+	strerr_die2sys(111,DROP,"unable to read form client: ");
+      if ( n == 0 )
+	flagexitasap = 1;
+      r = allwritessl(ssl, tbuf, n);
+      if ( r < 0 )
+	strerr_die2sys(111,DROP,"unable to write to network: ");
+    }
+    if (!iop[0].revents && !iop[1].revents)
+      strerr_die2x(0, DROP,"timeout reached without input");
+  }
+}
+#endif

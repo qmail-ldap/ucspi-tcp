@@ -1,5 +1,13 @@
 # Don't edit Makefile! Use conf-* for configuration.
 
+DEFINES=-DWITH_SSL
+#add -DWITH_SSL to enable ssl support
+
+# LIBS for additional libraries and INCS for additional includes
+LIBS=-lcrypto -lssl
+#INCS=-I/usr/local/include
+OPENSSLBIN=openssl
+
 SHELL=/bin/sh
 
 default: it
@@ -150,6 +158,10 @@ warn-auto.sh choose.sh conf-home
 	| sed s}HOME}"`head -1 conf-home`"}g \
 	> choose
 	chmod 755 choose
+
+clean: \
+TARGETS
+	rm -f `cat TARGETS`
 
 commands.o: \
 compile commands.c buffer.h stralloc.h gen_alloc.h str.h case.h \
@@ -745,7 +757,7 @@ tcpserver: \
 load tcpserver.o rules.o remoteinfo.o timeoutconn.o cdb.a dns.a \
 time.a unix.a byte.a socket.lib
 	./load tcpserver rules.o remoteinfo.o timeoutconn.o cdb.a \
-	dns.a time.a unix.a byte.a  `cat socket.lib`
+	dns.a time.a unix.a byte.a  $(LIBS) `cat socket.lib`
 
 tcpserver.o: \
 compile tcpserver.c uint16.h str.h byte.h fmt.h scan.h ip4.h fd.h \
@@ -754,7 +766,7 @@ alloc.h buffer.h error.h strerr.h sgetopt.h subgetopt.h pathexec.h \
 socket.h uint16.h ndelay.h remoteinfo.h stralloc.h uint16.h rules.h \
 stralloc.h sig.h dns.h stralloc.h iopause.h taia.h tai.h uint64.h \
 taia.h
-	./compile tcpserver.c
+	./compile $(DEFINES) $(INCS) tcpserver.c
 
 time.a: \
 makelib iopause.o tai_pack.o taia_add.o taia_approx.o taia_frac.o \
@@ -835,3 +847,18 @@ warn-auto.sh who@.sh conf-home
 	| sed s}HOME}"`head -1 conf-home`"}g \
 	> who@
 	chmod 755 who@
+
+cert:
+	${OPENSSLBIN} req -new -x509 -nodes \
+	-out cert.pem -days 366 \
+	-keyout cert.pem
+
+cert-req:
+	${OPENSSLBIN} req -new -nodes \
+	-out req.pem \
+	-keyout cert.pem
+	@echo
+	@echo "Send req.pem to your CA to obtain signed_req.pem, and do:"
+	@echo "cat signed_req.pem >> `head -1 conf-qmail`/control/cert.pem"
+
+
