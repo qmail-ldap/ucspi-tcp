@@ -1,0 +1,30 @@
+.TH delcr 1
+.SH NAME
+delcr \- remove a CR before each LF
+.SH SYNOPSIS
+.B delcr
+.SH DESCRIPTION
+.B delcr
+removes a CR at the end of each line of input,
+if a CR is present.
+It also removes a CR at the end of a partial final line.
+
+The pipeline
+
+.EX
+     addcr | delcr
+.EE
+
+prints an exact copy of its input.
+.SH COMPATIBILITY
+Some vendors ship
+.B dos2unix
+or
+.B dos2bsd
+tools similar to
+.BR delcr .
+Those tools often blow up on long lines and nulls.
+.B delcr
+has no trouble with long lines and nulls.
+.SH "SEE ALSO"
+addcr(1)

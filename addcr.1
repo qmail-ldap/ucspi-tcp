@@ -1,0 +1,22 @@
+.TH addcr 1
+.SH NAME
+addcr \- add a CR before each LF
+.SH SYNOPSIS
+.B addcr 
+.SH DESCRIPTION
+.B addcr
+inserts CR at the end of each line of input.
+It does not insert CR at the end of a partial final line.
+.SH COMPATIBILITY
+Some vendors ship
+.B unix2dos
+or
+.B bsd2dos
+tools similar to
+.BR addcr .
+Those tools often blow up on long lines and nulls.
+.B addcr
+has no trouble with long lines and nulls.
+.SH "SEE ALSO"
+delcr(1),
+fixcrio(1)

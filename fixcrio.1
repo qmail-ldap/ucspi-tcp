@@ -1,0 +1,15 @@
+.TH fixcrio 1
+.SH NAME
+fixcrio \- make sure that there is a CR before each LF
+.SH SYNOPSIS
+.B fixcrio
+.I program
+[
+.I arg ...
+]
+.SH DESCRIPTION
+.B fixcrio
+inserts CR at the end of each line of input where a CR is not already present.
+It does not insert CR at the end of a partial final line.
+.SH "SEE ALSO"
+addcr(1)

@@ -1,0 +1,25 @@
+.TH tcprulescheck 1
+.SH NAME
+tcprulescheck \- try out rules for tcpserver
+.SH SYNTAX
+.B tcprulescheck
+.I rules.cdb
+.I tcpremoteip
+[
+.I tcpremoteinfo
+]
+.SH DESCRIPTION
+.B tcprulescheck
+says what
+.B tcpserver
+will do with a connection from
+IP address
+.IR tcpremoteip ,
+following the rules compiled into
+.I rules.cdb
+by
+.BR tcprules .
+.SH "SEE ALSO"
+tcprules(1),
+tcpserver(1),
+tcp-environ(5)

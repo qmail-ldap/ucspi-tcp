@@ -1,0 +1,151 @@
+.TH tcpclient 1
+.SH NAME
+tcpclient \- create an outgoing TCP connection
+.SH SYNOPSIS
+.B tcpclient
+[
+.B \-hHrRdDqQv
+]
+[
+.B \-i\fIlocalip
+]
+[
+.B \-p\fIlocalport
+]
+[
+.B \-T\fItimeoutconn
+]
+[
+.B \-l\fIlocalname
+]
+[
+.B \-t\fItimeoutinfo
+]
+.I host
+.I port
+.I program
+[
+.I arg ...
+]
+.SH DESCRIPTION
+.B tcpclient
+attempts to connect to a TCP server.
+If it is successful, it runs
+.I program
+with the given arguments,
+with descriptor 6 reading from the network
+and descriptor 7 writing to the network.
+
+The server's address is given by
+.I host
+and
+.IR port .
+.I host
+may be 0, referring to the local machine,
+or a dotted-decimal IP address,
+or a host name;
+if a host has several IP addresses,
+.B tcpclient
+tries each in turn.
+.I port
+may be a numeric port number
+or a port name.
+
+.B tcpclient
+sets up several environment variables,
+as described in
+.B tcp-environ(5).
+.SH OPTIONS
+.TP
+.B \-i\fIlocalip
+Use
+.I localip
+as the IP address for the local side of the connection;
+quit if
+.I localip
+is not available.
+.TP
+.B \-p\fIlocalport
+Use
+.I localport
+as the port number for the local side of the connection;
+quit if
+.I localport
+is not available.
+.TP
+.B \-T\fItimeoutconn
+Give up on the
+connection attempt
+after
+.I timeoutconn
+seconds. Default: 60.
+This timeout applies to each IP address tried.
+.TP
+.B \-d
+(Default.)
+Delay sending data for a fraction of a second whenever the
+remote host is responding slowly,
+to make better use of the network.
+.TP
+.B \-D
+Never delay sending data;
+enable TCP_NODELAY.
+This is appropriate for interactive connections.
+.TP
+.B \-q
+Quiet.
+Do not print any messages.
+.TP
+.B \-Q
+(Default.)
+Print error messages.
+.TP
+.B \-v
+Verbose.
+Print all available messages.
+.SH "DATA-GATHERING OPTIONS"
+.TP
+.B \-h
+(Default.)
+Look up the remote host name for
+.BR TCPREMOTEHOST .
+.TP
+.B \-H
+Do not look up the remote host name;
+unset
+.BR TCPREMOTEHOST .
+.TP
+.B \-l\fIlocalname
+Do not look up the local host name;
+use
+.I localname
+for
+.BR TCPLOCALHOST .
+.TP
+.B \-r
+(Default.)
+Attempt to obtain
+.B TCPREMOTEINFO
+from the remote host.
+.TP
+.B \-R
+Do not attempt to obtain
+.B TCPREMOTEINFO
+from the remote host.
+.TP
+.B \-t\fItimeoutinfo
+Give up on the 
+.B TCPREMOTEINFO
+connection attempt
+after
+.I timeoutinfo
+seconds. Default: 26.
+.SH "SEE ALSO"
+date@(1),
+finger@(1),
+http@(1),
+mconnect(1),
+tcpcat(1),
+tcpserver(1),
+who@(1),
+tcp-environ(5)

@@ -1,0 +1,45 @@
+.TH finger@ 1
+.SH NAME
+finger@ \- get user information from a host
+.SH SYNTAX
+.B finger@
+[
+.I host
+[
+.I user
+]
+]
+.SH DESCRIPTION
+.B finger@
+connects to TCP port 79 (Finger) on
+.IR host ,
+sends
+.I user
+(with an extra CR)
+to
+.IR host ,
+and prints any data it receives.
+It removes CR and converts unprintable characters to a visible format.
+Some computers respond to port 79 with information about
+.IR user .
+
+If
+.I user
+is not supplied,
+.B finger@
+sends a blank line to
+.IR host .
+Some computers respond with information about
+all the users who are logged in.
+
+If
+.I host
+is not supplied,
+.B finger@
+connects to the local host.
+.SH "SEE ALSO"
+addcr(1),
+cat(1),
+delcr(1),
+finger(1),
+tcpclient(1)

@@ -1,0 +1,47 @@
+.TH argv0 1
+.SH NAME
+argv0 \- run a program with a specified 0th argument
+.SH SYNOPSIS
+.B argv0
+.I realname
+.I zero
+[
+.I arg ...
+]
+.SH DESCRIPTION
+.B argv0
+runs
+the program stored as
+.I realname
+on disk,
+with the given
+arguments.
+It sets the 0th argument of
+the program to
+.IR zero .
+
+For example,
+
+.EX
+     argv0 /bin/csh -bin/csh
+.EE
+
+runs
+.B /bin/csh
+with a 0th argument of
+.BR -bin/csh .
+.B csh
+will think it is a login shell
+and behave accordingly.
+
+.B argv0
+can be used to run some
+.B inetd
+wrappers under
+.BR tcpserver .
+.SH "SEE ALSO"
+csh(1),
+tcpserver(1),
+execve(2),
+execvp(3),
+inetd(8)

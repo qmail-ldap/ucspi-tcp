@@ -1,0 +1,75 @@
+.TH recordio 1
+.SH NAME
+recordio \- record the input and output of a program
+.SH SYNTAX
+.B recordio
+.I program
+[
+.I arg ...
+]
+.SH DESCRIPTION
+.B recordio
+runs
+.I program
+with the given arguments.
+It prints lines to stderr
+showing the input and output of
+.IR program .
+
+At the beginning of each line on stderr,
+.B recordio
+inserts the
+.I program
+process ID,
+along with
+.B <
+for input or
+.B >
+for output.
+At the end of each line it inserts a space, a plus sign, or [EOF];
+a space indicates that there was a newline in the input or output,
+and [EOF] indicates the end of input or output.
+
+.B recordio
+prints every packet of input and output immediately.
+It does not attempt to combine packets into coherent stderr lines.
+For example,
+
+.EX
+     recordio sh -c 'cat /dev/fd/8 2>&1' > /dev/null
+.EE
+
+could produce
+
+.EX
+     5135 > cat: /dev/fd/8: Bad file descriptor 
+.br
+     5135 > [EOF]
+.EE
+
+or
+
+.EX
+     5135 > cat: +
+.br
+     5135 > /dev/fd/8+
+.br
+     5135 > : +
+.br
+     5135 > Bad file descriptor 
+.br
+     5135 > [EOF]
+.EE
+
+.B recordio
+uses several lines for long packets
+to guarantee that each line is printed atomically to stderr.
+
+.B recordio
+runs as a child of
+.IR program .
+It exits when it sees the end of
+.IR program 's
+output.
+.SH "SEE ALSO"
+tcpserver(1)

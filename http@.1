@@ -1,0 +1,52 @@
+.TH http@ 1
+.SH NAME
+http@ \- get a web page from a host through HTTP
+.SH SYNTAX
+.B http@
+[
+.I host
+[
+.I page
+[
+.I port
+]
+]
+]
+.SH DESCRIPTION
+.B http@
+connects to
+.I port
+on
+.IR host ,
+sends
+.B GET /\fIpage
+(with an extra CR)
+to
+.IR host ,
+and prints any data it receives,
+removing CR from the end of each line.
+
+If
+.I port
+is not supplied,
+.B http@
+uses port 80 (HTTP).
+
+If
+.I page
+is not supplied,
+.B http@
+sends
+.B GET /
+to
+.IR host .
+
+If
+.I host
+is not supplied,
+.B http@
+connects to the local host.
+.SH "SEE ALSO"
+addcr(1),
+delcr(1),
+tcpclient(1)

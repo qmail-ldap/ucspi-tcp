@@ -1,0 +1,32 @@
+.TH date@ 1
+.SH NAME
+date@ \- print the date on a host
+.SH SYNTAX
+.B date@
+[
+.I host
+]
+.SH DESCRIPTION
+.B date@
+connects to TCP port 13 (Daytime) on
+.I host
+and prints any data it receives.
+It removes CR and converts unprintable characters to a visible format.
+
+If
+.I host
+is not supplied,
+.B date@
+connects to the local host.
+
+Some computers respond to port 13 with a human-readable date.
+For example, they may be running
+
+.EX
+     tcpserver 0 13 date &
+.EE
+.SH "SEE ALSO"
+cat(1),
+delcr(1),
+tcpclient(1),
+tcpserver(1)

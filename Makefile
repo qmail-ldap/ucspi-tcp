@@ -10,11 +10,15 @@ OPENSSLBIN=openssl
 
 SHELL=/bin/sh
 
-default: it
+default: it man
 
 addcr: \
 load addcr.o unix.a byte.a
 	./load addcr unix.a byte.a 
+
+addcr.0: \
+addcr.1
+	nroff -man addcr.1 > addcr.0
 
 addcr.o: \
 compile addcr.c buffer.h exit.h
@@ -31,6 +35,10 @@ compile alloc_re.c alloc.h byte.h
 argv0: \
 load argv0.o unix.a byte.a
 	./load argv0 unix.a byte.a 
+
+argv0.0: \
+argv0.1
+	nroff -man argv0.1 > argv0.0
 
 argv0.o: \
 compile argv0.c pathexec.h strerr.h
@@ -182,9 +190,17 @@ warn-auto.sh date@.sh conf-home
 	> date@
 	chmod 755 date@
 
+date@.0: \
+date@.1
+	nroff -man date@.1 > date@.0
+
 delcr: \
 load delcr.o unix.a byte.a
 	./load delcr unix.a byte.a 
+
+delcr.0: \
+delcr.1
+	nroff -man delcr.1 > delcr.0
 
 delcr.o: \
 compile delcr.c buffer.h exit.h
@@ -304,9 +320,17 @@ warn-auto.sh finger@.sh conf-home
 	> finger@
 	chmod 755 finger@
 
+finger@.0: \
+finger@.1
+	nroff -man finger@.1 > finger@.0
+
 fixcrio: \
 load fixcrio.o time.a unix.a byte.a
 	./load fixcrio time.a unix.a byte.a 
+
+fixcrio.0: \
+fixcrio.1
+	nroff -man fixcrio.1 > fixcrio.0
 
 fixcrio.o: \
 compile fixcrio.c sig.h buffer.h strerr.h byte.h readwrite.h exit.h \
@@ -357,6 +381,10 @@ warn-auto.sh http@.sh conf-home
 	| sed s}HOME}"`head -1 conf-home`"}g \
 	> http@
 	chmod 755 http@
+
+http@.0: \
+http@.1
+	nroff -man http@.1 > http@.0
 
 install: \
 load install.o hier.o auto_home.o unix.a byte.a
@@ -421,6 +449,11 @@ warn-auto.sh systype
 	) > makelib
 	chmod 755 makelib
 
+man: \
+tcpclient.0 tcpserver.0 tcprules.0 tcprulescheck.0 tcp-environ.0 \
+who@.0 date@.0 finger@.0 http@.0 tcpcat.0 mconnect.0 fixcrio.0 addcr.0 \
+delcr.0 argv0.0 recordio.0
+
 mconnect: \
 warn-auto.sh mconnect.sh conf-home
 	cat warn-auto.sh mconnect.sh \
@@ -436,6 +469,10 @@ mconnect-io.o: \
 compile mconnect-io.c sig.h wait.h fork.h buffer.h strerr.h \
 readwrite.h exit.h
 	./compile mconnect-io.c
+
+mconnect.0: \
+mconnect.1
+	nroff -man mconnect.1 > mconnect.0
 
 ndelay_off.o: \
 compile ndelay_off.c ndelay.h
@@ -506,6 +543,10 @@ recordio.o: \
 compile recordio.c sig.h buffer.h strerr.h str.h byte.h readwrite.h \
 exit.h fmt.h iopause.h taia.h tai.h uint64.h pathexec.h
 	./compile recordio.c
+
+recordio.0: \
+recordio.1
+	nroff -man recordio.1 > recordio.0
 
 remoteinfo.o: \
 compile remoteinfo.c fmt.h buffer.h socket.h uint16.h error.h \
@@ -714,6 +755,10 @@ taia_uint.o: \
 compile taia_uint.c taia.h tai.h uint64.h
 	./compile taia_uint.c
 
+tcp-environ.0: \
+tcp-environ.5
+	nroff -man tcp-environ.5 > tcp-environ.0
+
 tcpcat: \
 warn-auto.sh tcpcat.sh conf-home
 	cat warn-auto.sh tcpcat.sh \
@@ -721,11 +766,19 @@ warn-auto.sh tcpcat.sh conf-home
 	> tcpcat
 	chmod 755 tcpcat
 
+tcpcat.0: \
+tcpcat.1
+	nroff -man tcpcat.1 > tcpcat.0
+
 tcpclient: \
 load tcpclient.o remoteinfo.o timeoutconn.o dns.a time.a unix.a \
 byte.a socket.lib
 	./load tcpclient remoteinfo.o timeoutconn.o dns.a time.a \
 	unix.a byte.a  `cat socket.lib`
+
+tcpclient.0: \
+tcpclient.1
+	nroff -man tcpclient.1 > tcpclient.0
 
 tcpclient.o: \
 compile tcpclient.c sig.h exit.h sgetopt.h subgetopt.h uint16.h fmt.h \
@@ -739,6 +792,10 @@ tcprules: \
 load tcprules.o cdb.a unix.a byte.a
 	./load tcprules cdb.a unix.a byte.a 
 
+tcprules.0: \
+tcprules.1
+	nroff -man tcprules.1 > tcprules.0
+
 tcprules.o: \
 compile tcprules.c strerr.h stralloc.h gen_alloc.h getln.h buffer.h \
 stralloc.h buffer.h exit.h fmt.h byte.h cdb_make.h buffer.h uint32.h
@@ -747,6 +804,10 @@ stralloc.h buffer.h exit.h fmt.h byte.h cdb_make.h buffer.h uint32.h
 tcprulescheck: \
 load tcprulescheck.o rules.o cdb.a unix.a byte.a
 	./load tcprulescheck rules.o cdb.a unix.a byte.a 
+
+tcprulescheck.0: \
+tcprulescheck.1
+	nroff -man tcprulescheck.1 > tcprulescheck.0
 
 tcprulescheck.o: \
 compile tcprulescheck.c byte.h buffer.h strerr.h env.h rules.h \
@@ -758,6 +819,10 @@ load tcpserver.o rules.o remoteinfo.o timeoutconn.o cdb.a dns.a \
 time.a unix.a byte.a socket.lib
 	./load tcpserver rules.o remoteinfo.o timeoutconn.o cdb.a \
 	dns.a time.a unix.a byte.a  $(LIBS) `cat socket.lib`
+
+tcpserver.0: \
+tcpserver.1
+	nroff -man tcpserver.1 > tcpserver.0
 
 tcpserver.o: \
 compile tcpserver.c uint16.h str.h byte.h fmt.h scan.h ip4.h fd.h \
@@ -847,6 +912,10 @@ warn-auto.sh who@.sh conf-home
 	| sed s}HOME}"`head -1 conf-home`"}g \
 	> who@
 	chmod 755 who@
+
+who@.0: \
+who@.1
+	nroff -man who@.1 > who@.0
 
 cert:
 	${OPENSSLBIN} req -new -x509 -nodes \

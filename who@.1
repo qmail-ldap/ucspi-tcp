@@ -1,0 +1,32 @@
+.TH who@ 1
+.SH NAME
+who@ \- print list of active users on a host
+.SH SYNTAX
+.B who@
+[
+.I host
+]
+.SH DESCRIPTION
+.B who@
+connects to TCP port 11 (Systat) on
+.I host
+and prints any data it receives.
+It removes CR and converts unprintable characters to a visible format.
+
+If
+.I host
+is not supplied,
+.B who@
+connects to the local host.
+
+Some computers respond to port 11 with a list of active users.
+For example, they may be running
+
+.EX
+     tcpserver 0 11 who &
+.EE
+.SH "SEE ALSO"
+cat(1),
+delcr(1),
+tcpclient(1),
+tcpserver(1)
