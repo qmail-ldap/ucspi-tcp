@@ -705,7 +705,7 @@ static int allwritessl(SSL* ssl, char *buf, int len)
   return 0;
 }
 
-char tbuf[2048];
+char tbuf[4096];
 
 void translate(SSL* ssl, int clearout, int clearin, unsigned int iotimeout)
 {
@@ -742,22 +742,17 @@ void translate(SSL* ssl, int clearout, int clearin, unsigned int iotimeout)
     /* do iopause read */
     iopause(iop,iopl,&deadline,&now);
     if (iop[0].revents) {
+      /* data on sslin */
       do {
-        /* data on sslin */
-        n = SSL_read(ssl, tbuf, sizeof(tbuf));
-        if ( n < 0 )
+	n = SSL_read(ssl, tbuf, sizeof(tbuf));
+	if ( n < 0 )
 	  strerr_die2sys(111,DROP,"unable to read form network: ");
-        if ( n == 0 )
+	if ( n == 0 )
 	  flagexitasap = 1;
-        r = allwrite(clearout, tbuf, n);
-        if ( r < 0 )
+	r = allwrite(clearout, tbuf, n);
+	if ( r < 0 )
 	  strerr_die2sys(111,DROP,"unable to write to client: ");
-	/*
-	 * if the data payload was longer than sizeof(tbuf) then SSL will have
-	 * bytes processed and pending. We need to pick them up and write them
-	 * to clearout.
-	 */
-      } while (SSL_pending(ssl));
+      } while(!flagexitasap && SSL_pending(ssl));
     }
     if (iop[1].revents) {
       /* data on clearin */
